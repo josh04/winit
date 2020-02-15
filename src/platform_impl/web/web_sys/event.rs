@@ -48,6 +48,7 @@ pub fn scan_code(event: &KeyboardEvent) -> ScanCode {
 }
 
 pub fn virtual_key_code(event: &KeyboardEvent) -> Option<VirtualKeyCode> {
+    println!("winit key code: {:?}", event.code());
     Some(match &event.code()[..] {
         "Digit1" => VirtualKeyCode::Key1,
         "Digit2" => VirtualKeyCode::Key2,

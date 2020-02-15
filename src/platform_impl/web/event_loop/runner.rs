@@ -172,35 +172,35 @@ impl<T: 'static> Shared<T> {
     fn run_until_cleared(&self, events: impl Iterator<Item = Event<'static, T>>) {
         let mut control = self.current_control_flow();
         for event in events {
-            self.handle_event(event, &mut control);
+            self.handle_event(event, &mut control, false);
         }
-        self.handle_event(Event::MainEventsCleared, &mut control);
+        self.handle_event(Event::MainEventsCleared, &mut control, false);
 
         // Collect all of the redraw events to avoid double-locking the RefCell
         let redraw_events: Vec<WindowId> = self.0.redraw_pending.borrow_mut().drain().collect();
         for window_id in redraw_events {
-            self.handle_event(Event::RedrawRequested(window_id), &mut control);
+            self.handle_event(Event::RedrawRequested(window_id), &mut control, false);
         }
-        self.handle_event(Event::RedrawEventsCleared, &mut control);
+        self.handle_event(Event::RedrawEventsCleared, &mut control, false);
 
         self.apply_control_flow(control);
         // If the event loop is closed, it has been closed this iteration and now the closing
         // event should be emitted
         if self.is_closed() {
-            self.handle_event(Event::LoopDestroyed, &mut control);
+            self.handle_event(Event::LoopDestroyed, &mut control, false);
         }
     }
 
     fn handle_unload(&self) {
         self.apply_control_flow(root::ControlFlow::Exit);
         let mut control = self.current_control_flow();
-        self.handle_event(Event::LoopDestroyed, &mut control);
+        self.handle_event(Event::LoopDestroyed, &mut control, false);
     }
 
     // handle_event takes in events and either queues them or applies a callback
     //
     // It should only ever be called from send_event
-    fn handle_event(&self, event: Event<'static, T>, control: &mut root::ControlFlow) {
+    fn handle_event(&self, event: Event<'static, T>, control: &mut root::ControlFlow, recursing: bool) {
         let is_closed = self.is_closed();
 
         match *self.0.runner.borrow_mut() {
@@ -225,10 +225,10 @@ impl<T: 'static> Shared<T> {
 
         // Don't take events out of the queue if the loop is closed or the runner doesn't exist
         // If the runner doesn't exist and this method recurses, it will recurse infinitely
-        if !is_closed && self.0.runner.borrow().is_some() {
+        if !recursing && !is_closed && self.0.runner.borrow().is_some() {
             // Take an event out of the queue and handle it
             if let Some(event) = self.0.events.borrow_mut().pop_front() {
-                self.handle_event(event, control);
+                self.handle_event(event, control, true);
             }
         }
     }

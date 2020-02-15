@@ -132,7 +132,15 @@ impl<T> WindowTarget<T> {
         });
 
         let runner = self.runner.clone();
-        canvas.on_mouse_press(move |pointer_id, button, modifiers| {
+        canvas.on_mouse_press(move |pointer_id, position, button, modifiers| {
+            runner.send_event(Event::WindowEvent {
+                window_id: WindowId(id),
+                event: WindowEvent::CursorMoved {
+                    device_id: DeviceId(device::Id(pointer_id)),
+                    position,
+                    modifiers,
+                },
+            });
             runner.send_event(Event::WindowEvent {
                 window_id: WindowId(id),
                 event: WindowEvent::MouseInput {
